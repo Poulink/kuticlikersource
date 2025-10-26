@@ -12,30 +12,21 @@ const io = socketIo(server, {
   }
 });
 
-// Статические файлы
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Главная страница
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Хранилище данных игры
 const rooms = new Map();
 const players = new Map();
-
-// Хранилище последних кликов для античита
 const playerLastClicks = new Map();
 
-// Генерация ID комнаты
 function generateRoomId() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-// Интервалы для комнат
 const roomIntervals = new Map();
 
-// Античит система - 1 клик в 1ms = читер
 function checkAntiCheat(playerId) {
   const now = Date.now();
   const lastClick = playerLastClicks.get(playerId);
@@ -51,7 +42,6 @@ function checkAntiCheat(playerId) {
   return true;
 }
 
-// Кик игрока за читерство
 function kickPlayer(socket, reason) {
   const player = players.get(socket.id);
   if (player) {
@@ -77,7 +67,6 @@ function kickPlayer(socket, reason) {
 io.on('connection', (socket) => {
   console.log('Пользователь подключился:', socket.id);
 
-  // Создание комнаты
   socket.on('createRoom', (roomSize) => {
     try {
       const roomId = generateRoomId();
@@ -94,10 +83,12 @@ io.on('connection', (socket) => {
           goldenClicks: 0,
           threeDMaker: false,
           rainbowMode: false,
-          megaClick: 0
+          megaClick: 0,
+          energyFactory: false
         },
         gameStarted: false,
-        cursors: []
+        cursors: [],
+        factoryEvent: null
       };
       
       rooms.set(roomId, room);
@@ -122,7 +113,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Присоединение к комнате
   socket.on('joinRoom', (roomId) => {
     try {
       const cleanRoomId = roomId.trim().toUpperCase();
@@ -170,7 +160,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Обработка кликов с античитом
   socket.on('click', () => {
     try {
       if (!checkAntiCheat(socket.id)) {
@@ -186,23 +175,26 @@ io.on('connection', (socket) => {
       
       let basePoints = 1 * room.upgrades.clickMultiplier;
       
-      // Критический удар
-      const isCritical = Math.random() * 100 < room.upgrades.criticalChance;
-      if (isCritical) {
-        basePoints *= 3;
-        socket.emit('criticalHit', { points: basePoints });
-      }
-      
-      // Золотые клики
-      const isGolden = Math.random() * 100 < room.upgrades.goldenClicks;
-      if (isGolden) {
-        basePoints *= 5;
-        socket.emit('goldenClick', { points: basePoints });
-      }
-      
-      // Мега клик
-      if (room.upgrades.megaClick > 0) {
-        basePoints += room.upgrades.megaClick * 10;
+      // Если активен ивент с заводом - особые правила
+      if (room.factoryEvent && room.factoryEvent.active) {
+        basePoints = 0; // Во время ивента клики не дают очков
+      } else {
+        // Обычные улучшения работают только вне ивента
+        const isCritical = Math.random() * 100 < room.upgrades.criticalChance;
+        if (isCritical) {
+          basePoints *= 3;
+          socket.emit('criticalHit', { points: basePoints });
+        }
+        
+        const isGolden = Math.random() * 100 < room.upgrades.goldenClicks;
+        if (isGolden) {
+          basePoints *= 5;
+          socket.emit('goldenClick', { points: basePoints });
+        }
+        
+        if (room.upgrades.megaClick > 0) {
+          basePoints += room.upgrades.megaClick * 10;
+        }
       }
       
       room.score += basePoints;
@@ -213,15 +205,14 @@ io.on('connection', (socket) => {
         score: room.score,
         clicker: socket.id,
         points: basePoints,
-        isCritical: isCritical,
-        isGolden: isGolden
+        isCritical: basePoints > 1 && !room.factoryEvent?.active,
+        isGolden: basePoints > 3 && !room.factoryEvent?.active
       });
     } catch (error) {
       console.error('Ошибка клика:', error);
     }
   });
 
-  // Покупка улучшений
   socket.on('buyUpgrade', (upgradeType) => {
     try {
       const player = players.get(socket.id);
@@ -230,6 +221,32 @@ io.on('connection', (socket) => {
       const room = rooms.get(player.roomId);
       if (!room || !room.gameStarted) return;
       
+      // Если активен ивент с заводом - особые правила
+      if (room.factoryEvent && room.factoryEvent.active) {
+        if (upgradeType === 'holdDefense') {
+          const cost = 100;
+          if (room.score >= cost) {
+            room.score -= cost;
+            room.factoryEvent.defenseSpent += cost;
+            
+            // Проверяем потратили ли все 20000
+            if (room.factoryEvent.defenseSpent >= 20000) {
+              room.factoryEvent.success = true;
+              endFactoryEvent(room, true);
+            }
+            
+            io.to(player.roomId).emit('upgradeBought', {
+              upgradeType,
+              upgrades: room.upgrades,
+              score: room.score,
+              defenseSpent: room.factoryEvent.defenseSpent
+            });
+          }
+        }
+        return;
+      }
+      
+      // Обычные улучшения
       const upgradeCosts = {
         autoClicker: 50 * (room.upgrades.autoClicker + 1),
         clickMultiplier: 100 * room.upgrades.clickMultiplier,
@@ -238,7 +255,8 @@ io.on('connection', (socket) => {
         goldenClicks: 500 * (room.upgrades.goldenClicks + 1),
         threeDMaker: 1000,
         rainbowMode: 1500,
-        megaClick: 800 * (room.upgrades.megaClick + 1)
+        megaClick: 800 * (room.upgrades.megaClick + 1),
+        energyFactory: 3000
       };
       
       const cost = upgradeCosts[upgradeType];
@@ -251,6 +269,11 @@ io.on('connection', (socket) => {
       
       if (upgradeType === 'rainbowMode' && room.upgrades.rainbowMode) {
         socket.emit('error', 'Rainbow Mode уже куплен!');
+        return;
+      }
+      
+      if (upgradeType === 'energyFactory' && room.upgrades.energyFactory) {
+        socket.emit('error', 'Энергозавод уже куплен!');
         return;
       }
       
@@ -269,10 +292,10 @@ io.on('connection', (socket) => {
             room.upgrades.bonusPerSecond++;
             break;
           case 'criticalChance':
-            room.upgrades.criticalChance += 5; // +5% за уровень
+            room.upgrades.criticalChance += 5;
             break;
           case 'goldenClicks':
-            room.upgrades.goldenClicks += 2; // +2% за уровень
+            room.upgrades.goldenClicks += 2;
             break;
           case 'threeDMaker':
             room.upgrades.threeDMaker = true;
@@ -282,6 +305,11 @@ io.on('connection', (socket) => {
             break;
           case 'megaClick':
             room.upgrades.megaClick++;
+            break;
+          case 'energyFactory':
+            room.upgrades.energyFactory = true;
+            // Добавляем кнопку открытия станции
+            socket.emit('factoryBuilt');
             break;
         }
         
@@ -295,7 +323,6 @@ io.on('connection', (socket) => {
           io.to(player.roomId).emit('cursorsUpdate', room.cursors);
         }
         
-        // Специальные эффекты для уникальных улучшений
         if (upgradeType === 'threeDMaker') {
           io.to(player.roomId).emit('threeDActivated');
         }
@@ -306,6 +333,28 @@ io.on('connection', (socket) => {
       }
     } catch (error) {
       console.error('Ошибка покупки улучшения:', error);
+    }
+  });
+
+  // Обработка открытия станции энергозавода
+  socket.on('openFactoryStation', () => {
+    try {
+      const player = players.get(socket.id);
+      if (!player) return;
+      
+      const room = rooms.get(player.roomId);
+      if (!room || !room.gameStarted) return;
+      
+      if (!room.upgrades.energyFactory) {
+        socket.emit('error', 'У вас нет энергозавода!');
+        return;
+      }
+      
+      // Запускаем ивент с энергозаводом
+      startFactoryEvent(room);
+      
+    } catch (error) {
+      console.error('Ошибка открытия станции:', error);
     }
   });
 
@@ -343,7 +392,74 @@ io.on('connection', (socket) => {
   });
 });
 
-// Функция добавления курсора автокликера
+// Запуск ивента с энергозаводом
+function startFactoryEvent(room) {
+  room.factoryEvent = {
+    active: true,
+    startTime: Date.now(),
+    defenseSpent: 0,
+    success: false
+  };
+  
+  // Устанавливаем счетчик на 20000
+  room.score = 20000;
+  
+  io.to(room.id).emit('factoryEventStarted', {
+    timeLeft: 20,
+    defenseSpent: 0
+  });
+  
+  // Таймер ивента (20 секунд)
+  const eventInterval = setInterval(() => {
+    if (!rooms.has(room.id)) {
+      clearInterval(eventInterval);
+      return;
+    }
+    
+    const currentRoom = rooms.get(room.id);
+    if (!currentRoom || !currentRoom.factoryEvent?.active) {
+      clearInterval(eventInterval);
+      return;
+    }
+    
+    const timePassed = Date.now() - currentRoom.factoryEvent.startTime;
+    const timeLeft = Math.max(0, 20 - Math.floor(timePassed / 1000));
+    
+    if (timeLeft <= 0) {
+      // Время вышло - неудача
+      clearInterval(eventInterval);
+      endFactoryEvent(currentRoom, false);
+    } else {
+      io.to(room.id).emit('factoryEventUpdate', {
+        timeLeft: timeLeft,
+        defenseSpent: currentRoom.factoryEvent.defenseSpent
+      });
+    }
+  }, 1000);
+}
+
+// Завершение ивента с энергозаводом
+function endFactoryEvent(room, success) {
+  room.factoryEvent.active = false;
+  
+  if (success) {
+    // Успех - возвращаем обычные улучшения, но завод пропадает
+    room.upgrades.energyFactory = false;
+    room.score = 0; // Обнуляем счет
+    
+    io.to(room.id).emit('factoryEventSuccess');
+  } else {
+    // Неудача - забираем завод и возвращаем обычные улучшения
+    room.upgrades.energyFactory = false;
+    room.score = 0; // Обнуляем счет
+    
+    io.to(room.id).emit('factoryEventFailed');
+  }
+  
+  // Удаляем ивент
+  room.factoryEvent = null;
+}
+
 function addAutoClickerCursor(room, playerId) {
   const autoCursorId = `auto-${playerId}-${Date.now()}`;
   
@@ -379,7 +495,6 @@ function addAutoClickerCursor(room, playerId) {
   }, 100);
 }
 
-// Функция автокликера
 function startGame(roomId) {
   const room = rooms.get(roomId);
   if (!room) return;
@@ -394,20 +509,17 @@ function startGame(roomId) {
     }
     
     const currentRoom = rooms.get(roomId);
-    if (!currentRoom || !currentRoom.gameStarted) {
-      clearInterval(gameInterval);
-      roomIntervals.delete(roomId);
-      return;
-    }
+    if (!currentRoom || !currentRoom.gameStarted) return;
     
-    // Автоматические клики
-    if (currentRoom.upgrades.autoClicker > 0) {
-      currentRoom.score += currentRoom.upgrades.autoClicker * currentRoom.upgrades.clickMultiplier;
-    }
-    
-    // Бонусы в секунду
-    if (currentRoom.upgrades.bonusPerSecond > 0) {
-      currentRoom.score += currentRoom.upgrades.bonusPerSecond * 5;
+    // Если активен ивент с заводом - автокликеры не работают
+    if (!currentRoom.factoryEvent?.active) {
+      if (currentRoom.upgrades.autoClicker > 0) {
+        currentRoom.score += currentRoom.upgrades.autoClicker * currentRoom.upgrades.clickMultiplier;
+      }
+      
+      if (currentRoom.upgrades.bonusPerSecond > 0) {
+        currentRoom.score += currentRoom.upgrades.bonusPerSecond * 5;
+      }
     }
     
     io.to(roomId).emit('autoUpdate', {
