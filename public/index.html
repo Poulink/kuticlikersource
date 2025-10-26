@@ -16,7 +16,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             touch-action: manipulation;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
         .screen {
@@ -103,6 +103,7 @@
             width: 100%;
             height: 300px;
             margin: 20px 0;
+            perspective: 1000px;
         }
 
         #kutiImage {
@@ -114,7 +115,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            transition: all 0.1s ease;
+            transition: all 0.3s ease;
             box-shadow: 0 8px 25px rgba(0,0,0,0.3);
             display: flex;
             align-items: center;
@@ -126,11 +127,55 @@
             z-index: 20;
         }
 
+        /* 3D Эффекты */
+        .kuti-3d {
+            transform: translate(-50%, -50%) rotateX(10deg) rotateY(10deg);
+            box-shadow: 
+                20px 20px 60px rgba(0,0,0,0.5),
+                -10px -10px 30px rgba(255,255,255,0.1);
+            animation: float3D 3s ease-in-out infinite;
+            border: none;
+        }
+
+        @keyframes float3D {
+            0%, 100% { transform: translate(-50%, -50%) rotateX(10deg) rotateY(0deg); }
+            50% { transform: translate(-50%, -52%) rotateX(15deg) rotateY(10deg); }
+        }
+
+        .kuti-3d::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            border-radius: 50%;
+            z-index: -1;
+            animation: shine 2s ease-in-out infinite;
+        }
+
+        @keyframes shine {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        /* Rainbow Mode */
+        .rainbow-mode {
+            animation: rainbow 3s linear infinite;
+        }
+
+        @keyframes rainbow {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+
         #kutiImg {
             width: 100%;
             height: 100%;
             object-fit: cover;
             transition: all 0.1s ease;
+            border-radius: 50%;
         }
 
         #kutiImage:active #kutiImg {
@@ -153,30 +198,66 @@
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
         }
 
-        .cursor-click {
-            animation: clickAnimation 0.3s ease-out;
+        /* Эффекты для критических и золотых кликов */
+        .critical-effect {
+            animation: criticalGlow 0.5s ease-out;
         }
 
-        @keyframes clickAnimation {
-            0% { transform: scale(1); }
-            50% { transform: scale(0.8); }
-            100% { transform: scale(1); }
+        @keyframes criticalGlow {
+            0% { box-shadow: 0 0 0px red; }
+            50% { box-shadow: 0 0 30px red; }
+            100% { box-shadow: 0 0 0px red; }
         }
 
-        /* Анимация для кликов других игроков */
-        .kuti-highlight {
-            animation: highlight 0.3s ease;
+        .golden-effect {
+            animation: goldenGlow 0.5s ease-out;
         }
 
-        @keyframes highlight {
-            0% { border-color: #4ECDC4; }
-            100% { border-color: white; }
+        @keyframes goldenGlow {
+            0% { box-shadow: 0 0 0px gold; }
+            50% { box-shadow: 0 0 40px gold; }
+            100% { box-shadow: 0 0 0px gold; }
+        }
+
+        .score-popup {
+            position: absolute;
+            font-size: 1.5em;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 30;
+            animation: floatUp 1s ease-out forwards;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+
+        .critical-text {
+            color: #ff4444;
+            text-shadow: 0 0 10px red;
+        }
+
+        .golden-text {
+            color: gold;
+            text-shadow: 0 0 10px orange;
         }
 
         .score-display {
             font-size: 2.5em;
             margin: 20px 0;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .score-boost {
+            animation: scorePulse 0.3s ease;
+        }
+
+        @keyframes scorePulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
         }
 
         .upgrades {
@@ -184,6 +265,23 @@
             grid-template-columns: 1fr;
             gap: 10px;
             margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .upgrades::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .upgrades::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+        }
+
+        .upgrades::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 4px;
         }
 
         .upgrade-btn {
@@ -196,10 +294,28 @@
             transition: all 0.3s ease;
             position: relative;
             z-index: 100;
+            text-align: left;
         }
 
         .upgrade-btn:hover {
             background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+
+        .upgrade-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .upgrade-btn:disabled:hover {
+            background: rgba(255,255,255,0.1);
+            transform: none;
+        }
+
+        .upgrade-bought {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: #4CAF50;
         }
 
         .players-list {
@@ -221,7 +337,6 @@
             border-radius: 10px;
         }
 
-        /* Стиль для заглушки если картинка не загрузилась */
         .kuti-placeholder {
             font-size: 3em;
             color: white;
@@ -291,6 +406,10 @@
                 margin-left: -14px;
                 margin-top: -14px;
             }
+            
+            .upgrades {
+                max-height: 300px;
+            }
         }
     </style>
 </head>
@@ -354,25 +473,54 @@
             <div class="score-display" id="scoreDisplay">0</div>
             
             <div class="game-area">
-                <div id="kutiImage" onclick="handleClick()">
+                <div id="kutiImage" onclick="handleClick(event)">
                     <img src="images/kuti.jpg" alt="Kuti" id="kutiImg" onerror="this.style.display='none'; document.getElementById('kutiPlaceholder').style.display='block';">
                     <div class="kuti-placeholder" id="kutiPlaceholder" style="display: none;">🐾 KUTI</div>
                 </div>
                 <div id="cursorsContainer"></div>
+                <div id="effectsContainer"></div>
             </div>
             
             <div class="upgrades">
-                <div class="upgrade-btn" onclick="buyUpgrade('autoClicker')">
-                    Автокликер (<span id="autoClickerLevel">0</span>)<br>
-                    Цена: <span id="autoClickerCost">50</span>
+                <div class="upgrade-btn" onclick="buyUpgrade('autoClicker')" id="autoClickerBtn">
+                    🤖 Автокликер (<span id="autoClickerLevel">0</span>)<br>
+                    Цена: <span id="autoClickerCost">50</span><br>
+                    <small>Автоматически кликает каждую секунду</small>
                 </div>
-                <div class="upgrade-btn" onclick="buyUpgrade('clickMultiplier')">
-                    Множитель (<span id="clickMultiplierLevel">1</span>x)<br>
-                    Цена: <span id="clickMultiplierCost">100</span>
+                <div class="upgrade-btn" onclick="buyUpgrade('clickMultiplier')" id="clickMultiplierBtn">
+                    ⚡ Множитель (<span id="clickMultiplierLevel">1</span>x)<br>
+                    Цена: <span id="clickMultiplierCost">100</span><br>
+                    <small>Увеличивает силу каждого клика</small>
                 </div>
-                <div class="upgrade-btn" onclick="buyUpgrade('bonusPerSecond')">
-                    Бонус/сек (<span id="bonusPerSecondLevel">0</span>)<br>
-                    Цена: <span id="bonusPerSecondCost">200</span>
+                <div class="upgrade-btn" onclick="buyUpgrade('bonusPerSecond')" id="bonusPerSecondBtn">
+                    💰 Бонус/сек (<span id="bonusPerSecondLevel">0</span>)<br>
+                    Цена: <span id="bonusPerSecondCost">200</span><br>
+                    <small>Пассивный доход каждую секунду</small>
+                </div>
+                <div class="upgrade-btn" onclick="buyUpgrade('criticalChance')" id="criticalChanceBtn">
+                    🔥 Критический удар (<span id="criticalChanceLevel">0</span>%)<br>
+                    Цена: <span id="criticalChanceCost">300</span><br>
+                    <small>Шанс нанести 3x урон</small>
+                </div>
+                <div class="upgrade-btn" onclick="buyUpgrade('goldenClicks')" id="goldenClicksBtn">
+                    🌟 Золотые клики (<span id="goldenClicksLevel">0</span>%)<br>
+                    Цена: <span id="goldenClicksCost">500</span><br>
+                    <small>Шанс нанести 5x урон</small>
+                </div>
+                <div class="upgrade-btn" onclick="buyUpgrade('megaClick')" id="megaClickBtn">
+                    💥 Мега клик (<span id="megaClickLevel">0</span>)<br>
+                    Цена: <span id="megaClickCost">800</span><br>
+                    <small>+10 очков за каждый клик</small>
+                </div>
+                <div class="upgrade-btn" onclick="buyUpgrade('threeDMaker')" id="threeDMakerBtn">
+                    🎮 3D MAKER<br>
+                    Цена: <span id="threeDMakerCost">1000</span><br>
+                    <small>Превращает Kuti в 3D! (1 раз)</small>
+                </div>
+                <div class="upgrade-btn" onclick="buyUpgrade('rainbowMode')" id="rainbowModeBtn">
+                    🌈 RAINBOW MODE<br>
+                    Цена: <span id="rainbowModeCost">1500</span><br>
+                    <small>Радужные эффекты! (1 раз)</small>
                 </div>
             </div>
             
@@ -432,7 +580,7 @@
         }
 
         // Обработка клика
-        function handleClick() {
+        function handleClick(event) {
             if (!currentRoom) return;
             
             socket.emit('click');
@@ -453,7 +601,22 @@
             socket.emit('buyUpgrade', type);
         }
 
-        // Обновление курсоров автокликера на экране
+        // Создание эффекта текста
+        function createTextEffect(text, x, y, className) {
+            const effect = document.createElement('div');
+            effect.className = `score-popup ${className}`;
+            effect.textContent = text;
+            effect.style.left = x + 'px';
+            effect.style.top = y + 'px';
+            
+            document.getElementById('effectsContainer').appendChild(effect);
+            
+            setTimeout(() => {
+                effect.remove();
+            }, 1000);
+        }
+
+        // Обновление курсоров автокликера
         function updateCursors(cursors) {
             const container = document.getElementById('cursorsContainer');
             const gameArea = document.querySelector('.game-area');
@@ -472,6 +635,100 @@
                 
                 container.appendChild(cursorElement);
             });
+        }
+
+        // Активация 3D эффекта
+        function activate3DEffect() {
+            const kutiImage = document.getElementById('kutiImage');
+            kutiImage.classList.add('kuti-3d');
+            
+            // Добавляем дополнительные 3D эффекты
+            const style = document.createElement('style');
+            style.textContent = `
+                .kuti-3d {
+                    transform-style: preserve-3d;
+                    animation: float3D 3s ease-in-out infinite;
+                }
+                
+                @keyframes float3D {
+                    0%, 100% { 
+                        transform: translate(-50%, -50%) rotateX(10deg) rotateY(0deg) translateZ(0); 
+                    }
+                    25% { 
+                        transform: translate(-50%, -52%) rotateX(15deg) rotateY(90deg) translateZ(10px); 
+                    }
+                    50% { 
+                        transform: translate(-50%, -50%) rotateX(20deg) rotateY(180deg) translateZ(0); 
+                    }
+                    75% { 
+                        transform: translate(-50%, -52%) rotateX(15deg) rotateY(270deg) translateZ(10px); 
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Активация Rainbow режима
+        function activateRainbowMode() {
+            const kutiImage = document.getElementById('kutiImage');
+            kutiImage.classList.add('rainbow-mode');
+            
+            // Радужный фон для всего экрана
+            document.body.style.background = `
+                linear-gradient(45deg, 
+                    #ff0000, #ff8000, #ffff00, 
+                    #00ff00, #00ffff, #0000ff, 
+                    #8000ff, #ff00ff, #ff0000
+                )`;
+            document.body.style.backgroundSize = '400% 400%';
+            document.body.style.animation = 'rainbowBackground 10s linear infinite';
+            
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes rainbowBackground {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Обновление отображения улучшений
+        function updateUpgradesDisplay(upgrades) {
+            // Обновляем уровни
+            document.getElementById('autoClickerLevel').textContent = upgrades.autoClicker;
+            document.getElementById('clickMultiplierLevel').textContent = upgrades.clickMultiplier;
+            document.getElementById('bonusPerSecondLevel').textContent = upgrades.bonusPerSecond;
+            document.getElementById('criticalChanceLevel').textContent = upgrades.criticalChance;
+            document.getElementById('goldenClicksLevel').textContent = upgrades.goldenClicks;
+            document.getElementById('megaClickLevel').textContent = upgrades.megaClick;
+            
+            // Обновляем цены
+            document.getElementById('autoClickerCost').textContent = 50 * (upgrades.autoClicker + 1);
+            document.getElementById('clickMultiplierCost').textContent = 100 * upgrades.clickMultiplier;
+            document.getElementById('bonusPerSecondCost').textContent = 200 * (upgrades.bonusPerSecond + 1);
+            document.getElementById('criticalChanceCost').textContent = 300 * (upgrades.criticalChance + 1);
+            document.getElementById('goldenClicksCost').textContent = 500 * (upgrades.goldenClicks + 1);
+            document.getElementById('megaClickCost').textContent = 800 * (upgrades.megaClick + 1);
+            document.getElementById('threeDMakerCost').textContent = 1000;
+            document.getElementById('rainbowModeCost').textContent = 1500;
+            
+            // Обновляем уникальные улучшения
+            const threeDMakerBtn = document.getElementById('threeDMakerBtn');
+            const rainbowModeBtn = document.getElementById('rainbowModeBtn');
+            
+            if (upgrades.threeDMaker) {
+                threeDMakerBtn.classList.add('upgrade-bought');
+                threeDMakerBtn.disabled = true;
+                threeDMakerBtn.innerHTML = '🎮 3D MAKER<br><small>✅ АКТИВИРОВАН!</small>';
+            }
+            
+            if (upgrades.rainbowMode) {
+                rainbowModeBtn.classList.add('upgrade-bought');
+                rainbowModeBtn.disabled = true;
+                rainbowModeBtn.innerHTML = '🌈 RAINBOW MODE<br><small>✅ АКТИВИРОВАН!</small>';
+            }
         }
 
         // Обработчики событий сокета
@@ -520,7 +777,27 @@
         });
 
         socket.on('scoreUpdate', (data) => {
-            document.getElementById('scoreDisplay').textContent = Math.floor(data.score);
+            const scoreDisplay = document.getElementById('scoreDisplay');
+            scoreDisplay.textContent = Math.floor(data.score);
+            scoreDisplay.classList.add('score-boost');
+            setTimeout(() => scoreDisplay.classList.remove('score-boost'), 300);
+            
+            // Эффекты для критических и золотых кликов
+            if (data.isCritical) {
+                const kutiImage = document.getElementById('kutiImage');
+                kutiImage.classList.add('critical-effect');
+                setTimeout(() => kutiImage.classList.remove('critical-effect'), 500);
+                
+                createTextEffect('CRITICAL! x3', 100, 100, 'critical-text');
+            }
+            
+            if (data.isGolden) {
+                const kutiImage = document.getElementById('kutiImage');
+                kutiImage.classList.add('golden-effect');
+                setTimeout(() => kutiImage.classList.remove('golden-effect'), 500);
+                
+                createTextEffect('GOLDEN! x5', 100, 120, 'golden-text');
+            }
             
             // Анимация при клике другого игрока
             if (data.clicker !== socket.id) {
@@ -532,6 +809,14 @@
             }
         });
 
+        socket.on('criticalHit', (data) => {
+            createTextEffect(`CRITICAL! +${data.points}`, 150, 150, 'critical-text');
+        });
+
+        socket.on('goldenClick', (data) => {
+            createTextEffect(`GOLDEN! +${data.points}`, 150, 170, 'golden-text');
+        });
+
         socket.on('autoUpdate', (data) => {
             document.getElementById('scoreDisplay').textContent = Math.floor(data.score);
             updateUpgradesDisplay(data.upgrades);
@@ -540,6 +825,14 @@
         socket.on('upgradeBought', (data) => {
             document.getElementById('scoreDisplay').textContent = Math.floor(data.score);
             updateUpgradesDisplay(data.upgrades);
+        });
+
+        socket.on('threeDActivated', () => {
+            activate3DEffect();
+        });
+
+        socket.on('rainbowActivated', () => {
+            activateRainbowMode();
         });
 
         // Античит система
@@ -559,23 +852,11 @@
             }
         });
 
-        // Обновление отображения улучшений
-        function updateUpgradesDisplay(upgrades) {
-            document.getElementById('autoClickerLevel').textContent = upgrades.autoClicker;
-            document.getElementById('clickMultiplierLevel').textContent = upgrades.clickMultiplier;
-            document.getElementById('bonusPerSecondLevel').textContent = upgrades.bonusPerSecond;
-            
-            document.getElementById('autoClickerCost').textContent = 50 * (upgrades.autoClicker + 1);
-            document.getElementById('clickMultiplierCost').textContent = 100 * upgrades.clickMultiplier;
-            document.getElementById('bonusPerSecondCost').textContent = 200 * (upgrades.bonusPerSecond + 1);
-        }
-
         // Автоматически показываем заглушку если картинка не загрузилась
         document.addEventListener('DOMContentLoaded', function() {
             const kutiImg = document.getElementById('kutiImg');
             const kutiPlaceholder = document.getElementById('kutiPlaceholder');
             
-            // Проверяем загрузилась ли картинка
             setTimeout(() => {
                 if (!kutiImg.complete || kutiImg.naturalHeight === 0) {
                     kutiImg.style.display = 'none';
@@ -585,5 +866,4 @@
         });
     </script>
 </body>
-</html>
 </html>
