@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuti Clicker - Мультиплеерная Игра</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            touch-action: manipulation;
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+            padding: 20px;
+            min-height: 100vh;
+            color: white;
+            position: relative;
+        }
+
+        .active {
+            display: block;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            text-align: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        h2 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #FF6B6B, #FF8E53);
+            border: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border-radius: 25px;
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            width: 200px;
+            position: relative;
+            z-index: 100;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .room-size-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .size-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid white;
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+        }
+
+        .size-btn.selected {
+            background: #4CAF50;
+            transform: scale(1.1);
+        }
+
+        .game-area {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            margin: 20px 0;
+        }
+
+        #kutiImage {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            cursor: pointer;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s ease;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            user-select: none;
+            border: 4px solid white;
+            background: linear-gradient(45deg, #FFD93D, #FF6B6B);
+            z-index: 20;
+        }
+
+        #kutiImg {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: all 0.1s ease;
+        }
+
+        #kutiImage:active #kutiImg {
+            transform: scale(0.95);
+        }
+
+        /* Стили для курсоров автокликера */
+        .cursor-auto {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            background-image: url('/images/kurs.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            pointer-events: none;
+            z-index: 15;
+            transition: all 0.3s ease;
+            margin-left: -16px;
+            margin-top: -16px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+
+        .cursor-click {
+            animation: clickAnimation 0.3s ease-out;
+        }
+
+        @keyframes clickAnimation {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.8); }
+            100% { transform: scale(1); }
+        }
+
+        /* Анимация для кликов других игроков */
+        .kuti-highlight {
+            animation: highlight 0.3s ease;
+        }
+
+        @keyframes highlight {
+            0% { border-color: #4ECDC4; }
+            100% { border-color: white; }
+        }
+
+        .score-display {
+            font-size: 2.5em;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .upgrades {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .upgrade-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 15px;
+            border-radius: 15px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 100;
+        }
+
+        .upgrade-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .players-list {
+            margin: 20px 0;
+        }
+
+        .player {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 10px;
+        }
+
+        .room-id {
+            font-size: 1.5em;
+            margin: 20px 0;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        /* Стиль для заглушки если картинка не загрузилась */
+        .kuti-placeholder {
+            font-size: 3em;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        /* Стили для античита */
+        .cheat-warning {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,0,0,0.95);
+            color: white;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-size: 3em;
+            text-align: center;
+            z-index: 1000;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .cheat-warning.active {
+            display: flex;
+        }
+
+        .cheat-message {
+            font-size: 2em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .cheat-submessage {
+            font-size: 1.5em;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            .btn {
+                width: 90%;
+                max-width: 300px;
+            }
+            
+            #kutiImage {
+                width: 150px;
+                height: 150px;
+            }
+            
+            .kuti-placeholder {
+                font-size: 2em;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .game-area {
+                height: 250px;
+            }
+            
+            .cursor-auto {
+                width: 28px;
+                height: 28px;
+                margin-left: -14px;
+                margin-top: -14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Экран античита -->
+    <div id="cheatWarning" class="cheat-warning">
+        <div class="cheat-message">🚫 ИГРАЙ ЧЕСТНО!</div>
+        <div class="cheat-submessage">ИШАК!!</div>
+        <div class="cheat-submessage">Обнаружены неестественно быстрые клики!</div>
+    </div>
+
+    <!-- Экран меню -->
+    <div id="menuScreen" class="screen active">
+        <div class="container">
+            <h1>🎮 Kuti Clicker</h1>
+            <button class="btn" onclick="showScreen('createScreen')">Создать Комнату</button>
+            <button class="btn" onclick="showScreen('joinScreen')">Присоединиться</button>
+        </div>
+    </div>
+
+    <!-- Экран создания комнаты -->
+    <div id="createScreen" class="screen">
+        <div class="container">
+            <h2>Создать Комнату</h2>
+            <p>Выберите размер комнаты:</p>
+            <div class="room-size-selector">
+                <button class="size-btn" onclick="selectSize(2)">2</button>
+                <button class="size-btn" onclick="selectSize(4)">4</button>
+                <button class="size-btn" onclick="selectSize(6)">6</button>
+            </div>
+            <button class="btn" onclick="createRoom()">Создать</button>
+            <button class="btn" onclick="showScreen('menuScreen')">Назад</button>
+        </div>
+    </div>
+
+    <!-- Экран присоединения -->
+    <div id="joinScreen" class="screen">
+        <div class="container">
+            <h2>Присоединиться к Комнате</h2>
+            <input type="text" id="roomCodeInput" placeholder="Введите код комнаты" style="padding: 15px; font-size: 1.2em; width: 200px; text-align: center; border-radius: 25px; border: none; margin: 10px;">
+            <button class="btn" onclick="joinRoom()">Присоединиться</button>
+            <button class="btn" onclick="showScreen('menuScreen')">Назад</button>
+        </div>
+    </div>
+
+    <!-- Экран ожидания -->
+    <div id="waitingScreen" class="screen">
+        <div class="container">
+            <h2>Ожидание игроков</h2>
+            <div class="room-id" id="roomIdDisplay"></div>
+            <div class="players-list" id="playersList"></div>
+            <button class="btn" onclick="leaveRoom()">Выйти</button>
+            <button class="btn" onclick="showScreen('menuScreen')">Назад</button>
+        </div>
+    </div>
+
+    <!-- Игровой экран -->
+    <div id="gameScreen" class="screen">
+        <div class="container">
+            <h2>Kuti Clicker</h2>
+            <div class="score-display" id="scoreDisplay">0</div>
+            
+            <div class="game-area">
+                <div id="kutiImage" onclick="handleClick()">
+                    <img src="images/kuti.jpg" alt="Kuti" id="kutiImg" onerror="this.style.display='none'; document.getElementById('kutiPlaceholder').style.display='block';">
+                    <div class="kuti-placeholder" id="kutiPlaceholder" style="display: none;">🐾 KUTI</div>
+                </div>
+                <div id="cursorsContainer"></div>
+            </div>
+            
+            <div class="upgrades">
+                <div class="upgrade-btn" onclick="buyUpgrade('autoClicker')">
+                    Автокликер (<span id="autoClickerLevel">0</span>)<br>
+                    Цена: <span id="autoClickerCost">50</span>
+                </div>
+                <div class="upgrade-btn" onclick="buyUpgrade('clickMultiplier')">
+                    Множитель (<span id="clickMultiplierLevel">1</span>x)<br>
+                    Цена: <span id="clickMultiplierCost">100</span>
+                </div>
+                <div class="upgrade-btn" onclick="buyUpgrade('bonusPerSecond')">
+                    Бонус/сек (<span id="bonusPerSecondLevel">0</span>)<br>
+                    Цена: <span id="bonusPerSecondCost">200</span>
+                </div>
+            </div>
+            
+            <button class="btn" onclick="leaveRoom()">Выйти</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentRoom = null;
+        let selectedSize = 2;
+
+        // Навигация по экранам
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // Выбор размера комнаты
+        function selectSize(size) {
+            selectedSize = size;
+            document.querySelectorAll('.size-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            event.target.classList.add('selected');
+        }
+
+        // Создание комнаты
+        function createRoom() {
+            console.log('Создание комнаты размером:', selectedSize);
+            socket.emit('createRoom', selectedSize);
+        }
+
+        // Присоединение к комнате
+        function joinRoom() {
+            const roomCode = document.getElementById('roomCodeInput').value;
+            if (roomCode && roomCode.trim() !== '') {
+                console.log('Присоединение к комнате:', roomCode);
+                socket.emit('joinRoom', roomCode);
+            } else {
+                alert('Введите код комнаты!');
+            }
+        }
+
+        // Выход из комнаты
+        function leaveRoom() {
+            if (currentRoom) {
+                console.log('Выход из комнаты:', currentRoom);
+            }
+            currentRoom = null;
+            showScreen('menuScreen');
+            socket.disconnect();
+            socket.connect();
+        }
+
+        // Обработка клика
+        function handleClick() {
+            if (!currentRoom) return;
+            
+            socket.emit('click');
+            
+            // Анимация клика
+            const kutiImg = document.getElementById('kutiImg');
+            if (kutiImg.style.display !== 'none') {
+                kutiImg.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    kutiImg.style.transform = 'scale(1)';
+                }, 100);
+            }
+        }
+
+        // Покупка улучшения
+        function buyUpgrade(type) {
+            if (!currentRoom) return;
+            socket.emit('buyUpgrade', type);
+        }
+
+        // Обновление курсоров автокликера на экране
+        function updateCursors(cursors) {
+            const container = document.getElementById('cursorsContainer');
+            const gameArea = document.querySelector('.game-area');
+            
+            if (!container || !gameArea) return;
+            
+            container.innerHTML = '';
+            
+            cursors.forEach(cursor => {
+                const cursorElement = document.createElement('div');
+                cursorElement.className = 'cursor-auto';
+                cursorElement.setAttribute('data-cursor-id', cursor.id);
+                cursorElement.style.left = `${cursor.x}%`;
+                cursorElement.style.top = `${cursor.y}%`;
+                cursorElement.style.transform = `rotate(${cursor.rotation || 0}deg)`;
+                
+                container.appendChild(cursorElement);
+            });
+        }
+
+        // Обработчики событий сокета
+        socket.on('connect', () => {
+            console.log('Подключено к серверу');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Отключено от сервера');
+        });
+
+        socket.on('roomCreated', (data) => {
+            console.log('Комната создана:', data.roomId);
+            currentRoom = data.roomId;
+            document.getElementById('roomIdDisplay').textContent = `Код комнаты: ${data.roomId}`;
+            showScreen('waitingScreen');
+        });
+
+        socket.on('roomUpdate', (room) => {
+            console.log('Обновление комнаты:', room);
+            currentRoom = room.id;
+            document.getElementById('roomIdDisplay').textContent = `Код комнаты: ${room.id}`;
+            
+            const playersList = document.getElementById('playersList');
+            playersList.innerHTML = '';
+            room.players.forEach(player => {
+                const playerElement = document.createElement('div');
+                playerElement.className = 'player';
+                playerElement.textContent = player.name;
+                playersList.appendChild(playerElement);
+            });
+        });
+
+        socket.on('cursorsUpdate', (cursors) => {
+            updateCursors(cursors);
+        });
+
+        socket.on('error', (message) => {
+            console.error('Ошибка:', message);
+            alert('Ошибка: ' + message);
+        });
+
+        socket.on('gameStarted', () => {
+            console.log('Игра началась!');
+            showScreen('gameScreen');
+        });
+
+        socket.on('scoreUpdate', (data) => {
+            document.getElementById('scoreDisplay').textContent = Math.floor(data.score);
+            
+            // Анимация при клике другого игрока
+            if (data.clicker !== socket.id) {
+                const kutiImage = document.getElementById('kutiImage');
+                kutiImage.classList.add('kuti-highlight');
+                setTimeout(() => {
+                    kutiImage.classList.remove('kuti-highlight');
+                }, 300);
+            }
+        });
+
+        socket.on('autoUpdate', (data) => {
+            document.getElementById('scoreDisplay').textContent = Math.floor(data.score);
+            updateUpgradesDisplay(data.upgrades);
+        });
+
+        socket.on('upgradeBought', (data) => {
+            document.getElementById('scoreDisplay').textContent = Math.floor(data.score);
+            updateUpgradesDisplay(data.upgrades);
+        });
+
+        // Античит система
+        socket.on('cheatDetected', (reason) => {
+            document.getElementById('cheatWarning').classList.add('active');
+            setTimeout(() => {
+                document.getElementById('cheatWarning').classList.remove('active');
+                showScreen('menuScreen');
+            }, 5000);
+        });
+
+        socket.on('playerKicked', (data) => {
+            console.log(`Игрок ${data.playerId} был кикнут: ${data.reason}`);
+            if (data.playerId === socket.id) {
+                alert(`Вас кикнули из комнаты: ${data.reason}`);
+                showScreen('menuScreen');
+            }
+        });
+
+        // Обновление отображения улучшений
+        function updateUpgradesDisplay(upgrades) {
+            document.getElementById('autoClickerLevel').textContent = upgrades.autoClicker;
+            document.getElementById('clickMultiplierLevel').textContent = upgrades.clickMultiplier;
+            document.getElementById('bonusPerSecondLevel').textContent = upgrades.bonusPerSecond;
+            
+            document.getElementById('autoClickerCost').textContent = 50 * (upgrades.autoClicker + 1);
+            document.getElementById('clickMultiplierCost').textContent = 100 * upgrades.clickMultiplier;
+            document.getElementById('bonusPerSecondCost').textContent = 200 * (upgrades.bonusPerSecond + 1);
+        }
+
+        // Автоматически показываем заглушку если картинка не загрузилась
+        document.addEventListener('DOMContentLoaded', function() {
+            const kutiImg = document.getElementById('kutiImg');
+            const kutiPlaceholder = document.getElementById('kutiPlaceholder');
+            
+            // Проверяем загрузилась ли картинка
+            setTimeout(() => {
+                if (!kutiImg.complete || kutiImg.naturalHeight === 0) {
+                    kutiImg.style.display = 'none';
+                    kutiPlaceholder.style.display = 'block';
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
+</html>
